@@ -4,6 +4,9 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -65,5 +68,49 @@ class User extends Authenticatable
 
     public function reservasDevueltas() {
         return $this->books()->wherePivotNotNull('returned_at');
+    }
+
+    // ─── Relaciones sistema de bicicletas ───
+
+    /**
+     * 1:1 con Perfil
+     */
+    public function perfil(): HasOne
+    {
+        return $this->hasOne(Perfil::class);
+    }
+
+    /**
+     * M:N con Bicicleta a través de trayectos (tabla pivot)
+     */
+    public function bicicletas(): BelongsToMany
+    {
+        return $this->belongsToMany(Bicicleta::class, 'trayectos')
+            ->as('trayecto')
+            ->withPivot(['estacion_inicio_id', 'estacion_fin_id', 'started_at', 'ended_at']);
+    }
+
+    /**
+     * Relación directa con el modelo Trayecto
+     */
+    public function trayectos(): HasMany
+    {
+        return $this->hasMany(Trayecto::class);
+    }
+
+    /**
+     * Trayectos activos (sin finalizar)
+     */
+    public function trayectosActivos()
+    {
+        return $this->bicicletas()->wherePivotNull('ended_at');
+    }
+
+    /**
+     * Trayectos finalizados
+     */
+    public function trayectosFinalizados()
+    {
+        return $this->bicicletas()->wherePivotNotNull('ended_at');
     }
 }
