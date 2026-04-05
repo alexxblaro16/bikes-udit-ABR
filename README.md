@@ -1,59 +1,130 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema de Préstamo de Bicicletas - Campus Universitario
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplicación Laravel para gestionar el préstamo de bicicletas en un campus universitario.
 
-## About Laravel
+**Asignatura:** Backend I - UDIT  
+**Alumno:** Alejandro Blanco
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Descripción
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+El sistema permite gestionar estaciones de bicicletas, controlar el estado de cada bicicleta y registrar los trayectos que realizan los usuarios del campus.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Stack técnico
 
-## Learning Laravel
+- Laravel 12
+- PHP 8.3
+- MySQL 8.4
+- Redis 7.2
+- Docker Compose
+- Nginx
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Modelos y relaciones
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **User ↔ Perfil**: relación 1:1
+- **Estación → Bicicletas**: relación 1:N
+- **User ↔ Bicicletas** (a través de Trayectos): relación M:N
 
-## Laravel Sponsors
+### Esquema de la base de datos
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```
+users ──1:1── perfiles
+  │
+  └──M:N── trayectos ──M:N── bicicletas ──N:1── estaciones
+```
 
-### Premium Partners
+## Funcionalidades
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+1. **Listar estaciones** con sus bicicletas (con caché de 60 segundos)
+2. **Ver detalle de una bicicleta** con su estado (disponible, no-disponible, en-mantenimiento)
+3. **Ver trayectos de un usuario** y con qué bicicletas los ha hecho
+4. **Iniciar un trayecto**: el usuario coge una bicicleta de una estación
+5. **Finalizar un trayecto**: el usuario devuelve la bicicleta a una estación
 
-## Contributing
+## Reglas de negocio
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- Una bicicleta que no esté disponible **no se puede alquilar**
+- Una bicicleta en uso **no se puede volver a alquilar**
+- Un usuario **no puede tener más de un trayecto activo** a la vez
 
-## Code of Conduct
+## Caché
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+El listado de estaciones usa `Cache::remember()` con un TTL de 60 segundos. Se invalida automáticamente al iniciar o finalizar un trayecto.
 
-## Security Vulnerabilities
+## Comando Artisan
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan bikes:report
+```
 
-## License
+Muestra un resumen del sistema: total de bicicletas, disponibilidad, trayectos activos, bicicletas por estación, etc.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Cómo ejecutar
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/alexxblaro16/bikes-udit.git
+cd bikes-udit
+```
+
+### 2. Levantar los contenedores
+
+```bash
+docker compose up -d
+```
+
+### 3. Instalar dependencias
+
+```bash
+docker compose exec app composer install
+```
+
+### 4. Configurar el entorno
+
+```bash
+docker compose exec app cp .env.example .env
+docker compose exec app php artisan key:generate
+```
+
+Editar el `.env` para que apunte a MySQL:
+
+```
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=clase
+DB_USERNAME=clase
+DB_PASSWORD=clase
+```
+
+### 5. Ejecutar migraciones y seeders
+
+```bash
+docker compose exec app php artisan migrate:fresh --seed
+```
+
+### 6. Acceder a la aplicación
+
+Abrir en el navegador: [http://localhost:8001/estaciones](http://localhost:8001/estaciones)
+
+## Rutas principales
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/estaciones` | Listado de estaciones |
+| GET | `/estaciones/{id}` | Detalle de una estación |
+| GET | `/bicicletas/{id}` | Detalle de una bicicleta |
+| GET | `/trayectos/{user}` | Trayectos de un usuario |
+| POST | `/trayectos/iniciar` | Iniciar un trayecto |
+| POST | `/trayectos/{id}/finalizar` | Finalizar un trayecto |
+
+## Seeders
+
+El seeder crea automáticamente:
+- 10 usuarios con perfil
+- 5 estaciones con 4 bicicletas cada una (20 bicis)
+- 6 trayectos finalizados
+- 2 trayectos activos
+- 1 bicicleta en mantenimiento
+
+
